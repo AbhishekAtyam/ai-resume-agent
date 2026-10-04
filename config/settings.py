@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     max_jd_chars: int = Field(default=12000, alias="MAX_JD_CHARS")
 
     # --- Gemini (hosted LLM; free key from Google AI Studio; see DEPLOY.md) ---
-    gemini_model: str = Field(default="gemini-3.8-flash", alias="GEMINI_MODEL")
+    gemini_model: str = Field(default="gemini-3.5-flash-lite", alias="GEMINI_MODEL")
     gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
 
     # --- Groq (hosted LLM; free key from console.groq.com; see DEPLOY.md) ---
