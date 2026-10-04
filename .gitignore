@@ -1,0 +1,28 @@
+# Virtual environment
+.venv/
+venv/
+
+# Secrets / local config
+.env
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
+# Local user data & generated artifacts (contain PII — never commit)
+storage/users/*
+storage/applications/*
+outputs/resumes/*
+logs/*
+*.pdf
+*.docx
+
+# Keep directory placeholders
+!**/.gitkeep
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

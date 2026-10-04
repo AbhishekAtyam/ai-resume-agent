@@ -1,0 +1,28 @@
+# AI Resume Agent — Phase 1 toolchain (pinned minimally; see CLAUDE.md).
+
+# --- Core / config / UI ---
+streamlit>=1.37
+pydantic>=2.7
+pydantic-settings>=2.3
+python-dotenv>=1.0
+PyYAML>=6.0
+
+# --- LLM framework + orchestration ---
+langchain>=0.2
+langchain-community>=0.2
+langchain-ollama>=0.1
+langgraph>=0.2
+
+# --- Web extraction (JD) ---
+requests>=2.32
+beautifulsoup4>=4.12
+lxml>=5.2
+playwright>=1.45          # run `playwright install chromium` before Phase 1B use
+
+# --- Document I/O (parse + render) ---
+PyMuPDF>=1.24             # PDF text extraction + page counting
+python-docx>=1.1          # DOCX export
+reportlab>=4.2            # PDF rendering with precise page control
+
+# --- Testing ---
+pytest>=8.2

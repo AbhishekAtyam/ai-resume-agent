@@ -1,0 +1,12 @@
+# Streamlit theme — dark base so native widgets (dropdowns, dataframes) match
+# the custom neon CSS injected in ui/theme.py.
+[theme]
+base = "dark"
+primaryColor = "#6366f1"
+backgroundColor = "#0b0f19"
+secondaryBackgroundColor = "#121829"
+textColor = "#e8ecf5"
+font = "sans serif"
+
+[server]
+headless = true

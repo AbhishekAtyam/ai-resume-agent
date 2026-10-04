@@ -1,0 +1,31 @@
+# Resume formatting configuration (spec §16).
+# The Python rendering engine (ReportLab for PDF, python-docx for DOCX) reads
+# these values. The LLM never controls layout. All values are adjustable.
+
+page_limit: 2
+
+font:
+  family: Helvetica       # ReportLab core font; maps to Arial-like in DOCX
+  body_size: 10
+  heading_size: 12
+  name_size: 16
+
+margins:                  # inches
+  top: 0.5
+  bottom: 0.5
+  left: 0.6
+  right: 0.6
+
+spacing:
+  line: 1.15
+  section_gap: 8          # points between sections
+  bullet_gap: 2           # points between bullets
+
+# Order in which sections are rendered when present.
+section_order:
+  - summary
+  - skills
+  - experience
+  - projects
+  - education
+  - certifications
