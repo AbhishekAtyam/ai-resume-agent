@@ -94,6 +94,14 @@ streamlit run app.py        # http://localhost:8501
 
 ---
 
+## ☁️ Deploy for free
+
+The app is a single Streamlit service (no separate frontend/backend). The LLM is
+auto-selected: **Ollama → Gemini → Groq** (first available). For a free public demo, deploy
+on **Streamlit Community Cloud** with a free **Gemini** key (`GEMINI_API_KEY`) — the cloud
+app has no Ollama so it uses Gemini automatically. Full step-by-step: **[DEPLOY.md](DEPLOY.md)**.
+(Running locally keeps everything 100% private via Ollama.)
+
 ## 📁 Project structure
 
 ```

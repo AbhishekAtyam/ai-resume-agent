@@ -4,6 +4,7 @@ venv/
 
 # Secrets / local config
 .env
+.streamlit/secrets.toml
 
 # Python caches
 __pycache__/

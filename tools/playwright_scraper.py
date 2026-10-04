@@ -59,6 +59,12 @@ def _collect_all_frame_html(page) -> list[str]:
 
 def scrape_jd_playwright(url: str) -> str | None:
     """Render the page with headless Chromium and extract JD text, or None."""
+    from config.settings import settings
+
+    if not settings.enable_playwright:
+        logger.info("Playwright disabled (ENABLE_PLAYWRIGHT=false); skipping JS render")
+        return None
+
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:

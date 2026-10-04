@@ -10,7 +10,9 @@ PyYAML>=6.0
 # --- LLM framework + orchestration ---
 langchain>=0.2
 langchain-community>=0.2
-langchain-ollama>=0.1
+langchain-ollama>=0.1          # local provider (default)
+langchain-google-genai>=1.0   # hosted provider (Gemini) for free cloud deploy
+langchain-groq>=0.1           # hosted provider (Groq) alternative
 langgraph>=0.2
 
 # --- Web extraction (JD) ---

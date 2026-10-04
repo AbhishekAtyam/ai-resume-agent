@@ -27,7 +27,9 @@ class Settings(BaseSettings):
     )
 
     # --- LLM configuration (provider-agnostic; see llm/factory.py) ---
-    llm_provider: str = Field(default="ollama", alias="LLM_PROVIDER")
+    # "auto" picks the first available provider in order: ollama -> gemini -> groq.
+    # Set a specific provider name to force it.
+    llm_provider: str = Field(default="auto", alias="LLM_PROVIDER")
     ollama_model: str = Field(default="qwen3:8b", alias="OLLAMA_MODEL")
     ollama_base_url: str = Field(
         default="http://localhost:11434", alias="OLLAMA_BASE_URL"
@@ -41,6 +43,18 @@ class Settings(BaseSettings):
     llm_num_predict: int | None = Field(default=None, alias="LLM_NUM_PREDICT")
     # Cap the characters sent to the LLM for a single JD (scraped pages can be huge).
     max_jd_chars: int = Field(default=12000, alias="MAX_JD_CHARS")
+
+    # --- Gemini (hosted LLM; free key from Google AI Studio; see DEPLOY.md) ---
+    gemini_model: str = Field(default="gemini-2.0-flash", alias="GEMINI_MODEL")
+    gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
+
+    # --- Groq (hosted LLM; free key from console.groq.com; see DEPLOY.md) ---
+    groq_model: str = Field(default="llama-3.3-70b-versatile", alias="GROQ_MODEL")
+    groq_api_key: str = Field(default="", alias="GROQ_API_KEY")
+
+    # Playwright is heavy and unavailable on most free hosts. Set ENABLE_PLAYWRIGHT=false
+    # on the server to skip JS-render scraping (HTTP + manual paste still work).
+    enable_playwright: bool = Field(default=True, alias="ENABLE_PLAYWRIGHT")
 
     # --- Resume generation constraints ---
     max_pages: int = Field(default=2, alias="MAX_PAGES")

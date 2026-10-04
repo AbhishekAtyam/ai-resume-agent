@@ -24,7 +24,7 @@ from config.logging_config import get_logger, tail_log
 from config.settings import settings
 from graph.graph import generate_and_validate
 from graph.routers import route_input
-from llm.factory import ollama_available
+from llm.factory import active_provider, llm_available
 from models.resume_models import MasterProfile
 from tools.file_utils import (
     delete_profile,
@@ -555,11 +555,12 @@ def main() -> None:
     with brand_col:
         header()
     with health_col:
-        up = ollama_available()
+        up = llm_available()
+        label = f"{active_provider()}" if up else "offline"
         st.markdown(
             f'<div class="healthdot" style="margin-top:16px;justify-content:flex-end;">'
             f'<span class="dot {"up" if up else "down"}"></span>'
-            f'{"LLM online" if up else "LLM offline"}</div>',
+            f'LLM: {label}</div>',
             unsafe_allow_html=True,
         )
     with toggle_col:
@@ -596,11 +597,14 @@ def main() -> None:
 
     st.write("")
     with st.expander("⚙️ Engine & logs"):
-        up = ollama_available()
+        up = llm_available()
+        prov = active_provider()
         health = ("🟢 LLM reachable" if up
-                  else "🔴 LLM not reachable — run `ollama serve`")
-        st.caption(f"{health} · Provider `{settings.llm_provider}` · "
-                   f"Model `{settings.ollama_model}` · Reasoning `{settings.llm_reasoning}`")
+                  else "🔴 No LLM available — start Ollama or set a Gemini/Groq key")
+        model = {"ollama": settings.ollama_model, "gemini": settings.gemini_model,
+                 "groq": settings.groq_model}.get(prov, "—")
+        st.caption(f"{health} · Active provider `{prov}` · Model `{model}` "
+                   f"(LLM_PROVIDER=`{settings.llm_provider}`)")
         st.code(tail_log(30), language="text")
 
     st.markdown(

@@ -372,6 +372,21 @@ explicit approval first (Rule 1).
     private, 100% local"); toned primary to professional indigo (#4f46e5→#6366f1, softer
     glow); hid Streamlit chrome (Deploy/toolbar/status) for a clean product look. Top bar
     now: brand · LLM health · theme toggle. 65 tests pass, boots clean.
+  - Deploy-ready (free cloud): added **Groq** provider in `llm/factory.py` (+ `groq_model`/
+    `groq_api_key` settings, `langchain-groq` req) — `LLM_PROVIDER=groq` for cloud, local
+    stays Ollama. Provider-aware `llm_available()` (ollama ping / groq key presence).
+    `ENABLE_PLAYWRIGHT` flag (false on hosts → skip chromium, HTTP+paste still work).
+    Added `DEPLOY.md` (Streamlit Community Cloud step-by-step), `.streamlit/
+    secrets.toml.example`, gitignored real secrets, README deploy section. Architecture
+    note: single Streamlit service (no FE/BE split). 67 tests pass (Groq-branch +
+    llm_available tests).
+  - Multi-provider + auto-select: added **Gemini** (`langchain-google-genai`,
+    `GEMINI_API_KEY`/`GEMINI_MODEL`). `LLM_PROVIDER` default now **`auto`** →
+    `resolve_provider()` picks first available in order **ollama → gemini → groq** (ollama
+    pinged; gemini/groq by key presence; result cached per process; explicit provider
+    bypasses). `active_provider()` shown in the health dot ("LLM: gemini"). DEPLOY/secrets/
+    .env updated to lead with Gemini (free key from Google AI Studio). 69 tests pass; local
+    auto-selects ollama.
 
 ---
 

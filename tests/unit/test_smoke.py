@@ -15,7 +15,7 @@ import yaml
 def test_settings_load():
     from config.settings import settings
 
-    assert settings.llm_provider == "ollama"
+    assert settings.llm_provider == "auto"
     assert settings.max_pages == 2
     assert settings.max_retries == 2
 
@@ -59,10 +59,92 @@ def test_llm_factory_builds(monkeypatch):
     fake_mod = types.ModuleType("langchain_ollama")
     fake_mod.ChatOllama = FakeChatOllama
     monkeypatch.setitem(sys.modules, "langchain_ollama", fake_mod)
+    monkeypatch.setattr(factory.settings, "llm_provider", "ollama")
 
     llm = factory.get_llm()
     assert isinstance(llm, FakeChatOllama)
     assert captured["model"] == "qwen3:8b"
+
+
+def test_llm_factory_builds_gemini(monkeypatch):
+    """get_llm() builds a ChatGoogleGenerativeAI when provider=gemini."""
+    import sys
+    import types
+
+    import llm.factory as factory
+
+    captured = {}
+
+    class FakeGemini:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    fake_mod = types.ModuleType("langchain_google_genai")
+    fake_mod.ChatGoogleGenerativeAI = FakeGemini
+    monkeypatch.setitem(sys.modules, "langchain_google_genai", fake_mod)
+    monkeypatch.setattr(factory.settings, "llm_provider", "gemini")
+    monkeypatch.setattr(factory.settings, "gemini_api_key", "test-key")
+    monkeypatch.setattr(factory.settings, "gemini_model", "gemini-2.0-flash")
+
+    llm = factory.get_llm()
+    assert isinstance(llm, FakeGemini)
+    assert captured["model"] == "gemini-2.0-flash"
+    assert "reasoning" not in captured
+
+
+def test_resolve_provider_prefers_available(monkeypatch):
+    """auto picks ollama -> gemini -> groq by availability."""
+    import llm.factory as factory
+
+    monkeypatch.setattr(factory.settings, "llm_provider", "auto")
+    monkeypatch.setattr(factory, "_resolved_provider", None)
+    # Ollama down, gemini has a key, groq has a key -> gemini wins.
+    monkeypatch.setattr(factory, "_provider_ready",
+                        lambda p: {"ollama": False, "gemini": True, "groq": True}[p])
+    assert factory.resolve_provider(force=True) == "gemini"
+
+    monkeypatch.setattr(factory, "_resolved_provider", None)
+    # Ollama up -> ollama wins regardless of keys.
+    monkeypatch.setattr(factory, "_provider_ready",
+                        lambda p: {"ollama": True, "gemini": True, "groq": True}[p])
+    assert factory.resolve_provider(force=True) == "ollama"
+
+
+def test_llm_factory_builds_groq(monkeypatch):
+    """get_llm() builds a ChatGroq when provider=groq (no network)."""
+    import sys
+    import types
+
+    import llm.factory as factory
+
+    captured = {}
+
+    class FakeChatGroq:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    fake_mod = types.ModuleType("langchain_groq")
+    fake_mod.ChatGroq = FakeChatGroq
+    monkeypatch.setitem(sys.modules, "langchain_groq", fake_mod)
+    monkeypatch.setattr(factory.settings, "llm_provider", "groq")
+    monkeypatch.setattr(factory.settings, "groq_api_key", "test-key")
+    monkeypatch.setattr(factory.settings, "groq_model", "llama-3.3-70b-versatile")
+
+    llm = factory.get_llm()
+    assert isinstance(llm, FakeChatGroq)
+    assert captured["model"] == "llama-3.3-70b-versatile"
+    # Ollama-only params must NOT be forwarded to Groq.
+    assert "reasoning" not in captured and "num_ctx" not in captured
+
+
+def test_llm_available_is_provider_aware(monkeypatch):
+    import llm.factory as factory
+
+    monkeypatch.setattr(factory.settings, "llm_provider", "groq")
+    monkeypatch.setattr(factory.settings, "groq_api_key", "")
+    assert factory.llm_available() is False
+    monkeypatch.setattr(factory.settings, "groq_api_key", "key")
+    assert factory.llm_available() is True
 
 
 def test_llm_factory_rejects_unknown_provider(monkeypatch):
