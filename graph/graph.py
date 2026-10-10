@@ -111,6 +111,13 @@ def generate_and_validate(
             confirmed_skills=confirmed_skills, llm=llm,
         )
 
+    # Job-fit: how well the resume covers the role's HARD skills, measured against the
+    # whole resume (skills + confirmed + summary + bullets) — not just the Skills list.
+    fit_score, missing_critical = job_fit_coverage(jd, jd_analysis, resume, confirmed_skills)
+    structural = rule.score if rule is not None else 0
+    overall = round(0.5 * structural + 0.5 * fit_score) if fit_score is not None \
+        else structural
+
     return {
         "resume": resume,
         "pdf_path": fmt_result.get("pdf_path"),
@@ -120,4 +127,59 @@ def generate_and_validate(
         "llm": verdict,
         "attempts": attempts,
         "status": final_status,
+        "structural_score": structural,
+        "fit_score": fit_score,
+        "missing_critical": missing_critical,
+        "overall_score": overall,
     }
+
+
+_FIT_STOP = {"of", "to", "and", "the", "for", "with", "in", "a", "an", "or", "on",
+             "skills", "experience", "ability", "knowledge"}
+
+
+def _resume_text(resume) -> str:
+    parts = [resume.summary]
+    parts += [b for e in resume.experience for b in e.bullets]
+    parts += [b for p in resume.projects for b in p.bullets]
+    parts += [p.description for p in resume.projects]
+    parts += [t for p in resume.projects for t in p.technologies]
+    return " ".join(parts).lower()
+
+
+def _in_text(skill: str, text: str) -> bool:
+    """Lenient: the skill (or all its content words) appears somewhere in the resume."""
+    s = skill.lower().strip()
+    if s and s in text:
+        return True
+    import re as _re
+
+    words = [w for w in _re.split(r"[^a-z0-9+#]+", s) if len(w) > 2 and w not in _FIT_STOP]
+    return bool(words) and all(w in text for w in words)
+
+
+def job_fit_coverage(jd, jd_analysis, resume, confirmed_skills):
+    """Return (fit_percent, missing_skills) over the role's hard skills.
+
+    Denominator = required_skills + tools_and_technologies (atomic), falling back to
+    the analysis' critical skills. A skill counts as covered if a variant is in the
+    resume's Skills/confirmed list OR it appears anywhere in the resume text.
+    """
+    from agents.gap_analyzer import _covered_by_profile, _normkey
+    from tools.skills import clean_skills
+
+    denom = clean_skills(list(jd.required_skills) + list(jd.tools_and_technologies)) \
+        if jd else []
+    if not denom and jd_analysis:
+        denom = clean_skills(jd_analysis.critical_skills)
+    if not denom:
+        return None, []
+
+    norms = {_normkey(s) for s in resume.skills}
+    norms |= {_normkey(s) for s in (confirmed_skills or [])}
+    text = _resume_text(resume)
+
+    missing = [d for d in denom
+               if not (_covered_by_profile(d, norms) or _in_text(d, text))]
+    fit = round(100 * (len(denom) - len(missing)) / len(denom))
+    return fit, missing

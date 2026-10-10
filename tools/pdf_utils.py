@@ -108,9 +108,32 @@ def _bullets(items: list[str], styles: dict) -> ListFlowable:
     )
 
 
+def _href(url: str) -> str:
+    """Ensure a URL has a scheme so the PDF link is clickable."""
+    url = (url or "").strip()
+    if not url:
+        return ""
+    if url.startswith(("http://", "https://", "mailto:")):
+        return url
+    return "https://" + url
+
+
 def _contact_line(p) -> str:
-    parts = [p.email, p.phone, p.location, p.linkedin, p.github, p.portfolio]
-    return "  |  ".join(_esc(x) for x in parts if x)
+    """Build the header contact line.
+
+    Email/phone/location are shown as plain text (ATS reads them); profile links
+    are shown as clickable labels (e.g. "LinkedIn") rather than raw URLs.
+    """
+    parts: list[str] = []
+    for text in (p.email, p.phone, p.location):
+        if text:
+            parts.append(_esc(text))
+    for label, url in (("LinkedIn", p.linkedin), ("GitHub", p.github),
+                       ("Portfolio", p.portfolio)):
+        if url:
+            parts.append(f'<a href="{_esc(_href(url))}" color="black">'
+                         f'<u>{label}</u></a>')
+    return "  |  ".join(parts)
 
 
 def _build_story(resume: CustomizedResume, fmt: dict) -> list:
@@ -139,8 +162,17 @@ def _build_story(resume: CustomizedResume, fmt: dict) -> list:
             story.append(Paragraph(_esc(resume.summary), styles["summary"]))
 
         elif section == "skills" and resume.skills:
+            from tools.skills import categorize_skills
+
             story += _section_heading("Skills", styles)
-            story.append(Paragraph(_esc(", ".join(resume.skills)), styles["body"]))
+            groups = categorize_skills(resume.skills)
+            if groups:
+                for label, items in groups:
+                    story.append(Paragraph(
+                        f"<b>{_esc(label)}:</b> {_esc(', '.join(items))}",
+                        styles["body"]))
+            else:
+                story.append(Paragraph(_esc(", ".join(resume.skills)), styles["body"]))
 
         elif section == "experience" and resume.experience:
             story += _section_heading("Experience", styles)

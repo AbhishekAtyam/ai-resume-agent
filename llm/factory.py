@@ -74,11 +74,6 @@ def llm_available() -> bool:
     return _provider_ready(resolve_provider())
 
 
-# Backwards-compatible alias.
-def ollama_available() -> bool:
-    return llm_available()
-
-
 def get_llm(temperature: float | None = None, **kwargs: Any):
     """Return a configured LangChain chat model for the active provider.
 

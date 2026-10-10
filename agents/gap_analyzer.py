@@ -9,6 +9,7 @@ never invents experience.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from config.logging_config import get_logger
@@ -18,6 +19,73 @@ from models.resume_models import GapAnalysis, MasterProfile, SkillClassification
 from tools.file_utils import load_prompt
 
 logger = get_logger(__name__)
+
+# Known equivalent-skill groups so e.g. a JD "Spark" isn't flagged "missing" when
+# the profile lists "PySpark". Normalized (alphanumeric, lowercase).
+_SYNONYMS = [
+    {"spark", "pyspark", "apachespark"},
+    {"postgresql", "postgres"},
+    {"javascript", "js"}, {"typescript", "ts"},
+    {"kubernetes", "k8s"}, {"scikitlearn", "sklearn"},
+    {"tensorflow", "tf"}, {"amazonwebservices", "aws"},
+    {"googlecloudplatform", "gcp"}, {"microsoftazure", "azure"},
+    {"nodejs", "node"}, {"restapi", "rest", "restfulapi"},
+    {"cicd", "cicdpipelines"}, {"nlp", "naturallanguageprocessing"},
+    {"machinelearning", "ml"}, {"deeplearning", "dl"},
+    {"powerbi", "powerbidesktop"}, {"githubactions", "ghactions"},
+]
+
+
+def _normkey(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", (s or "").lower())
+
+
+def _variants(norm: str) -> set[str]:
+    out = {norm, "py" + norm, "apache" + norm}
+    for group in _SYNONYMS:
+        if norm in group:
+            out |= group
+    return out
+
+
+def _covered_by_profile(skill: str, profile_norms: set[str]) -> bool:
+    """True if a JD skill is effectively present in the profile via a variant."""
+    sn = _normkey(skill)
+    if not sn:
+        return False
+    variants = _variants(sn)
+    for pn in profile_norms:
+        if not pn:
+            continue
+        if pn in variants or sn in _variants(pn):
+            return True
+        # e.g. profile "pyspark" / "apachespark" covers JD "spark"
+        if len(sn) >= 5 and pn.endswith(sn):
+            return True
+        if len(pn) >= 5 and sn.endswith(pn):
+            return True
+    return False
+
+
+def _absorb_covered(gap: GapAnalysis, profile: MasterProfile) -> GapAnalysis:
+    """Move 'missing' skills that the profile actually covers (via variants) to matched.
+
+    Prevents false mismatches like Spark vs PySpark.
+    """
+    profile_norms = {_normkey(s) for s in profile.skills}
+    for pr in profile.projects:
+        profile_norms |= {_normkey(t) for t in pr.technologies}
+
+    still_missing = []
+    for item in gap.missing_skills:
+        if _covered_by_profile(item.skill, profile_norms):
+            gap.matched_skills.append(SkillClassification(
+                skill=item.skill, status="matched",
+                evidence="Covered by an equivalent skill in your profile"))
+        else:
+            still_missing.append(item)
+    gap.missing_skills = still_missing
+    return gap
 
 # Bucket priority (highest claim first). Deterministic reconciliation uses this.
 _PRIORITY = ["matched", "partial", "working_knowledge", "missing"]
@@ -108,7 +176,10 @@ def candidate_skills_for_confirmation(gap: GapAnalysis) -> list[str]:
         _add(s.skill)
     for kw in gap.keyword_gaps:
         _add(kw)
-    return out
+    # Only offer atomic skills — never full JD requirement sentences.
+    from tools.skills import clean_skills
+
+    return clean_skills(out)
 
 
 def _build_payload(
@@ -173,6 +244,7 @@ def analyze_gap(
 
     gap = result if isinstance(result, GapAnalysis) else GapAnalysis.model_validate(result)
     gap = reconcile_gap(gap)  # deterministic consistency guard
+    gap = _absorb_covered(gap, profile)  # treat skill variants (Spark≈PySpark) as matched
     logger.info(
         "Gap analysis completed (matched=%d, partial=%d, working=%d, missing=%d)",
         len(gap.matched_skills),

@@ -10,6 +10,7 @@ from pathlib import Path
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.opc.constants import RELATIONSHIP_TYPE as _RT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
@@ -22,6 +23,32 @@ logger = get_logger(__name__)
 # ATS-safe sans-serif that pairs with Helvetica in the PDF.
 DOCX_FONT = "Arial"
 BLACK = RGBColor(0, 0, 0)
+
+
+def _href(url: str) -> str:
+    url = (url or "").strip()
+    if not url or url.startswith(("http://", "https://", "mailto:")):
+        return url
+    return "https://" + url
+
+
+def _add_hyperlink(paragraph, url: str, text: str, size: int) -> None:
+    """Add a clickable hyperlink run (friendly label) to a paragraph."""
+    r_id = paragraph.part.relate_to(_href(url), _RT.HYPERLINK, is_external=True)
+    link = OxmlElement("w:hyperlink")
+    link.set(qn("r:id"), r_id)
+    run = OxmlElement("w:r")
+    r_pr = OxmlElement("w:rPr")
+    r_fonts = OxmlElement("w:rFonts")
+    r_fonts.set(qn("w:ascii"), DOCX_FONT); r_fonts.set(qn("w:hAnsi"), DOCX_FONT)
+    r_pr.append(r_fonts)
+    sz = OxmlElement("w:sz"); sz.set(qn("w:val"), str(size * 2)); r_pr.append(sz)
+    col = OxmlElement("w:color"); col.set(qn("w:val"), "000000"); r_pr.append(col)
+    u = OxmlElement("w:u"); u.set(qn("w:val"), "single"); r_pr.append(u)
+    run.append(r_pr)
+    t = OxmlElement("w:t"); t.text = text; run.append(t)
+    link.append(run)
+    paragraph._p.append(link)
 
 
 def _set_margins(section, margins: dict) -> None:
@@ -91,12 +118,22 @@ def render_docx(resume: CustomizedResume, out_path: str | Path, fmt: dict) -> Pa
         hp = doc.add_paragraph()
         hp.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _run(hp, p.name, size=name_size, bold=True)
-    contact = [p.email, p.phone, p.location, p.linkedin, p.github, p.portfolio]
-    contact = [c for c in contact if c]
-    if contact:
+    text_parts = [c for c in (p.email, p.phone, p.location) if c]
+    links = [(lbl, url) for lbl, url in
+             (("LinkedIn", p.linkedin), ("GitHub", p.github), ("Portfolio", p.portfolio))
+             if url]
+    if text_parts or links:
         cp = doc.add_paragraph()
         cp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        _run(cp, "  |  ".join(contact), size=body - 1)
+        first = True
+        for t in text_parts:
+            if not first:
+                _run(cp, "  |  ", size=body - 1)
+            _run(cp, t, size=body - 1); first = False
+        for lbl, url in links:  # clickable labels, not raw URLs
+            if not first:
+                _run(cp, "  |  ", size=body - 1)
+            _add_hyperlink(cp, url, lbl, body - 1); first = False
 
     order = fmt.get("section_order", [
         "summary", "skills", "experience", "projects", "education", "certifications",
@@ -113,8 +150,17 @@ def render_docx(resume: CustomizedResume, out_path: str | Path, fmt: dict) -> Pa
             _run(sp, resume.summary, size=body)
 
         elif section == "skills" and resume.skills:
+            from tools.skills import categorize_skills
+
             _heading(doc, "Skills", heading)
-            _run(doc.add_paragraph(), ", ".join(resume.skills), size=body)
+            groups = categorize_skills(resume.skills)
+            if groups:
+                for label, items in groups:
+                    para = doc.add_paragraph()
+                    _run(para, f"{label}: ", size=body, bold=True)
+                    _run(para, ", ".join(items), size=body)
+            else:
+                _run(doc.add_paragraph(), ", ".join(resume.skills), size=body)
 
         elif section == "experience" and resume.experience:
             _heading(doc, "Experience", heading)

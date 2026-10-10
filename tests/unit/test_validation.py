@@ -10,10 +10,13 @@ from models.validation_models import LLMJudgeResult, RuleValidationResult
 def _good_resume() -> CustomizedResume:
     return CustomizedResume(
         personal={"name": "Jane Doe", "email": "jane@example.com", "phone": "12345"},
-        summary="Experienced data engineer.",
+        summary=("Data engineer with five years building large-scale ETL pipelines and "
+                 "analytics platforms using Python, SQL, and Spark for fintech teams."),
         skills=["Python", "SQL", "Spark"],
-        experience=[{"title": "Data Engineer", "company": "Acme",
-                     "bullets": ["Built pipelines"]}],
+        experience=[{"title": "Data Engineer", "company": "Acme", "start_date": "2021",
+                     "end_date": "Present",
+                     "bullets": ["Built Python and SQL pipelines processing 2TB daily",
+                                  "Optimized Spark jobs, cutting runtime by 30%"]}],
         education=[{"degree": "B.Tech", "institution": "VNR", "end_year": "2020"}],
     )
 
@@ -28,6 +31,22 @@ def test_ats_pass(tmp_path):
     result = validate_ats(resume, fmt)
     assert result.status == "PASS"
     assert result.page_count >= 1
+    # New: per-check results + ATS score.
+    assert result.checks, "expected a populated checks list"
+    assert all({"label", "passed", "severity", "detail"} <= set(c) for c in result.checks)
+    assert 0 <= result.score <= 100
+    assert result.score >= 80  # a clean resume should score high
+
+
+def test_ats_score_drops_on_failures():
+    from agents.ats_validator import validate_ats
+    from models.resume_models import CustomizedResume
+
+    bad = CustomizedResume(personal={"name": "No Email"}, skills=[], experience=[])
+    result = validate_ats(bad, {"page_count": 3, "pdf_path": None})
+    assert result.status == "FAIL"
+    assert 0 <= result.score < 70
+    assert any(not c["passed"] for c in result.checks)
 
 
 def test_ats_fails_on_missing_email_and_skills():

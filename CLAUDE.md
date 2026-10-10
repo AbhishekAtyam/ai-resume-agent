@@ -387,6 +387,71 @@ explicit approval first (Rule 1).
     bypasses). `active_provider()` shown in the health dot ("LLM: gemini"). DEPLOY/secrets/
     .env updated to lead with Gemini (free key from Google AI Studio). 69 tests pass; local
     auto-selects ollama.
+  - UX pass 4 (production polish): new modern palette + typography in `ui/theme.py` (both
+    modes via CSS vars, incl. BaseWeb popover/menu/toggle overrides so **theme-switching is
+    reliable**). **Processing screen** (`ss["pending"]` + `_run_pending` + `processing_banner`)
+    replaces the step panel while a long task runs → spinner/animation clearly visible and
+    **duplicate clicks impossible** (buttons set pending + rerun; no inline chain calls).
+    Structuring/JD/generate all route through it. Consistent **navigation** (Continue /
+    Parse & match / Generate / ← Back / ↺ Start over; clickable breadcrumb). Rewrote all
+    copy (headers via eyebrow+title+desc, buttons, messages); provider-accurate health +
+    footer (local vs hosted). Skills prompt upgraded: clean casing/de-dupe + **natural
+    integration** of confirmed skills into summary/bullets (no keyword dumping, no fabricated
+    facts); sanitizer keeps the LLM's professional casing. 69 tests pass; app boots.
+  - UX pass 5 (premium + ATS report): new **Google/Material-inspired palette** in
+    `ui/theme.py` (blue primary #1a73e8 / #8ab4f8, neutral grays, **soft charcoal dark
+    #202124** — not flat black; `--on-primary`; Material shadows), config.toml matched.
+    **Fixed theme toggle** → plain button in `_topbar` (no st.toggle value/key desync).
+    Review step now **shows parsed JD + analysis** (critical/required/preferred skills,
+    tools, role focus, responsibilities) via `chips()`. ATS validator refactored to emit
+    **per-check results + weighted score (0-100)** (`RuleValidationResult.checks`/`score`);
+    Resume step shows an **ATS score card** (`score_card`), **check tables** with ✓/✗
+    (`checks_table`), content-review table, and **critical-keyword coverage**. 70 tests pass.
+  - UX pass 6 (production hardening): fixed light-mode black buttons/expander (forced colors
+    with !important in `ui/theme.py`); refined dark palette (bg #1b1c1f, cards #26272b).
+    **Skill synonyms** (Spark≈PySpark, Postgres≈PostgreSQL…) via `_absorb_covered` in
+    `gap_analyzer` + prompt (Java≠JavaScript guarded). **Skills order**: core profile skills
+    first, confirmed/added last (`_sanitize_resume`). **Contact links** render as clickable
+    labels (LinkedIn/GitHub/Portfolio) not raw URLs in PDF (`<a>`) + DOCX (`_add_hyperlink`).
+    **Richer ATS checks** (~18: duplicate bullets, repeated openers, quantified impact,
+    dates, bullet length, first-person voice, summary length). Removed footer tagline.
+    **Deleted dead code**: `ui/pipeline.py`, unused `neon_loader`, `ollama_available`.
+    70 tests pass; app boots; compileall clean.
+  - UX pass 7 (resume CONTENT quality — the big fix): root cause of garbage Skills was the
+    JD parser emitting whole requirement *sentences* as skills → dumped verbatim. Fixes:
+    new **`tools/skills.py`** (`is_atomic_skill`, `clean_skills`, `categorize_skills`);
+    `jd_parser.txt` extracts atomic tech only; `candidate_skills_for_confirmation` and
+    `_sanitize_resume` run `clean_skills` (sentences can never reach Skills); Skills render
+    **grouped by category** (Languages/Data & Cloud/AI & ML/BI/Web & APIs/Tools) in PDF+DOCX;
+    customizer prompt weaves confirmed skills into summary/bullets (truthfully). ATS validator
+    gained content-quality checks (atomic skills, focused count, no dup skills, **skills
+    substantiated in experience** = anti-stuffing). `graph` now returns **structural + job-fit
+    (critical-skill coverage) + overall** score; Resume step shows Overall + breakdown.
+    Verified live on the Apple JD: Skills clean/grouped/atomic (sentence filtered), job-fit
+    100%, no fabrication. 75 tests pass. NOTE: skill *weaving* into bullets is conservative
+    on local qwen3:8b (truthful); Gemini weaves more — recommended for production.
+  - UX pass 8 (review fixes): (1) **generic** skills categorization — specific categories
+    matched before Languages (so "Azure SQL Database"→Data & Cloud) via `_MATCH_ORDER` vs
+    `_DISPLAY_ORDER` in `tools/skills.py`; NOT an Apple/exact-token hack. (2) **Score
+    explanation**: `_score_explanation` in `app.py` tells the user WHY the score is low and
+    lists the **missing critical skills** (evidence) + how to fix (confirm them), plus any
+    structural issues. (3) **Dates bug fixed**: profile-editor edits were lost unless "Save
+    changes" clicked — `Continue` now commits the editor's `edited` value, so typed
+    start/end dates persist into generation. (4) **Prose↔Skills consistency**: `_sanitize_resume`
+    re-adds any profile/confirmed skill named in summary/bullets but missing from Skills
+    (+ prompt rule). (5) **Project technologies** cleaned via `clean_skills` + prompt rule to
+    populate them. 75 tests pass; app boots.
+  - UX pass 9 (job-fit correctness — fixes "I have it but it shows missing"): job-fit was
+    computed from `jd_analysis.critical_skills` (which contained soft/phrase items) and only
+    matched the Skills LIST. Rewrote as `graph.job_fit_coverage(jd, jd_analysis, resume,
+    confirmed)`: denominator = **hard skills** (required + tools, atomic via clean_skills,
+    fallback critical); a skill counts covered if a variant is in skills/confirmed OR it
+    appears **anywhere in the resume text** (summary/bullets/project desc+tech) via lenient
+    content-word matching (`_in_text`). Returns `missing_critical` (stored in result). The
+    **Confirm step now offers the JD's hard skills** (`_confirmable_skills`) so what's
+    measured is tickable; score explanation reads `result["missing_critical"]`. Verified:
+    skills named in bullets/summary (RAG pipelines, embeddings, Streamlit, React…) now count;
+    only genuinely-absent skills (e.g. Spark, Kafka) remain missing. 75 tests pass; app boots.
 
 ---
 

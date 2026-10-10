@@ -49,21 +49,27 @@ def _sanitize_resume(
     cust.languages = list(profile.languages)
     cust.hobbies = list(profile.hobbies)
 
-    # 2. Skills: keep LLM ordering but only allowed skills; ensure confirmed included.
+    # 2. Skills: only allowed + ATOMIC skills (no JD sentences), LLM casing. Core profile
+    #    skills come FIRST (in the LLM's relevance order); runtime-confirmed skills go to
+    #    the END. clean_skills() enforces atomicity + near-duplicate removal.
+    from tools.skills import clean_skills
+
     allowed = _allowed_skill_set(profile, confirmed)
+    profile_norms = {_norm(s) for s in profile.skills}
     seen: set[str] = set()
-    skills: list[str] = []
+    core: list[str] = []
+    added: list[str] = []
     for s in cust.skills:
         k = _norm(s)
         if k in allowed and k not in seen:
             seen.add(k)
-            skills.append(allowed[k])  # canonical display
-    for s in confirmed or []:
+            (core if k in profile_norms else added).append(s.strip())
+    for s in confirmed or []:  # ensure every confirmed skill appears, at the end
         k = _norm(s)
         if k and k not in seen:
             seen.add(k)
-            skills.append(s.strip())
-    cust.skills = skills
+            added.append(s.strip())
+    cust.skills = clean_skills(core + added)
 
     # 3. Experience: take factual fields from the matching profile entry; keep LLM
     #    bullets. Drop any entry that doesn't match a real profile role.
@@ -101,10 +107,26 @@ def _sanitize_resume(
             match.bullets = pr.bullets
         if pr.description:
             match.description = pr.description
-        if pr.technologies:  # keep only technologies that are allowed or already present
-            match.technologies = pr.technologies
+        if pr.technologies:  # keep only clean, atomic technologies
+            match.technologies = clean_skills(pr.technologies)
         sanitized_proj.append(match)
     cust.projects = sanitized_proj or [p.model_copy(deep=True) for p in profile.projects]
+
+    # 5. Prose ↔ Skills consistency: if a real (profile/confirmed) skill is named in the
+    #    summary or any bullet but got dropped from the Skills list, add it back — so the
+    #    resume never mentions a tool it doesn't also list as a skill.
+    present = {_norm(s) for s in cust.skills}
+    blob = " ".join(
+        [cust.summary]
+        + [b for e in cust.experience for b in e.bullets]
+        + [b for pr in cust.projects for b in pr.bullets]
+        + [pr.description for pr in cust.projects]
+    ).lower()
+    for key, display in allowed.items():
+        if key and key not in present and display.lower() in blob:
+            cust.skills.append(display)
+            present.add(key)
+    cust.skills = clean_skills(cust.skills)
 
     return cust
 

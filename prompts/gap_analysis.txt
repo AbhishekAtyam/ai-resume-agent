@@ -27,6 +27,13 @@ Also identify:
 - relevant_experience  : profile roles most relevant, as "Title @ Company"
 - keyword_gaps         : important job keywords/terms absent from the profile
 
+SYNONYMS & VARIANTS
+- Treat well-known equivalents and variants as the SAME skill — do not mark one "missing"
+  when the profile clearly has an equivalent. Examples: Spark ≈ PySpark ≈ Apache Spark;
+  Postgres ≈ PostgreSQL; JS ≈ JavaScript; K8s ≈ Kubernetes; sklearn ≈ scikit-learn;
+  AWS ≈ Amazon Web Services; NLP ≈ Natural Language Processing. Match on meaning, not exact
+  spelling.
+
 STRICT RULES
 - Classify ONLY skills that appear in the job input. Do not add new skills.
 - Each skill appears in EXACTLY ONE bucket. Never list the same skill in two buckets.

@@ -18,6 +18,9 @@ class RuleValidationResult(BaseModel):
     errors: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     page_count: int = 0
+    # Per-rule results (each: key, label, passed, severity, detail) + ATS score 0-100.
+    checks: list[dict] = Field(default_factory=list)
+    score: int = 100
 
 
 class LLMJudgeResult(BaseModel):

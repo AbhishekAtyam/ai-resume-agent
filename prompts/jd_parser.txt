@@ -11,10 +11,21 @@ RULES (STRICT)
 - If a field is not present, leave it empty ("" or []). Do not guess.
 - Separate "required" from "preferred/nice-to-have" skills based on the posting's
   own wording (e.g. "required", "must have" vs "preferred", "plus", "nice to have").
-- Keep individual skills/tools as separate list items; do not bundle them.
 - Responsibilities should be concise action statements drawn from the posting.
-- keywords: important role-specific terms an ATS would scan for (skills, tools,
-  domain terms), deduplicated.
+
+SKILL EXTRACTION (CRITICAL — atomic skills only)
+- Every item in required_skills, preferred_skills, tools_and_technologies, and keywords
+  MUST be an ATOMIC skill or tool name: 1–4 words, a proper technology/skill (e.g.
+  "Snowflake", "Apache Spark", "PyTorch", "RAG", "LangChain", "FastAPI", "dimensional
+  modeling"). Use canonical casing.
+- NEVER store a full sentence or requirement phrase. When a qualification is written as a
+  sentence, EXTRACT the specific technologies/skills named inside it and list those atoms.
+  Example — from "Experience with cloud data platforms and cloud-native architectures
+  (AWS, GCP, or Azure — AWS preferred), along with ML frameworks such as PyTorch or
+  TensorFlow" → extract ["AWS", "GCP", "Azure", "PyTorch", "TensorFlow"].
+- Reject fragments that start with Experience/Ability/Demonstrated/Strong/Proven/Familiar
+  or contain commas, "e.g.", "such as", "including" — split them into atoms instead.
+- Deduplicate across all skill lists.
 
 OUTPUT REQUIREMENTS
 Return a structured object with these fields:

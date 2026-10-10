@@ -25,7 +25,7 @@ This guide deploys the app publicly, **for free**, on **Streamlit Community Clou
 
 1. Go to **<https://aistudio.google.com/app/apikey>** and sign in with your Google account.
 2. Click **Create API key** and copy it.
-3. Default model is `gemini-2.0-flash` (fast, free tier). You can change `GEMINI_MODEL` later.
+3. Default model is `gemini-3.8-flash` (fast, free tier). You can change `GEMINI_MODEL` later.
 
 > Prefer Groq instead? Get a key at **<https://console.groq.com>** (`gsk_...`) and set
 > `GROQ_API_KEY` + `GROQ_MODEL` in Step 4 rather than the Gemini ones. The app's `auto`
@@ -67,7 +67,7 @@ your real key:
 ```toml
 LLM_PROVIDER = "auto"
 GEMINI_API_KEY = "your_gemini_key_here"
-GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_MODEL = "gemini-3.8-flash"
 ENABLE_PLAYWRIGHT = "false"
 LLM_REASONING = "false"
 ```
@@ -98,7 +98,7 @@ Ollama and uses your Gemini (or Groq) key.
 - **Sleeps when idle.** Free apps spin down after inactivity and take a few seconds to wake.
 - **Free-tier rate limits.** Gemini/Groq free tiers limit requests/tokens per minute.
   Generation makes several LLM calls (and up to 3 correction attempts), so under heavy use
-  you may hit limits — a lighter model (e.g. Gemini `gemini-2.0-flash`, Groq
+  you may hit limits — a lighter model (e.g. Gemini `gemini-3.8-flash`, Groq
   `llama-3.1-8b-instant`) helps.
 - **URL scraping is limited.** `ENABLE_PLAYWRIGHT=false` on the host means JS-heavy job
   pages won't auto-extract — **pasting the JD always works** and is the reliable path.
